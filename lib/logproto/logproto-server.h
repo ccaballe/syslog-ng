@@ -29,6 +29,8 @@
 #include "persist-state.h"
 #include "transport/transport-aux-data.h"
 #include "bookmark.h"
+// @ccaballero
+#include "messages.h"
 
 typedef struct _LogProtoServer LogProtoServer;
 typedef struct _LogProtoServerOptions LogProtoServerOptions;
@@ -86,7 +88,7 @@ struct _LogProtoServer
   LogProtoPrepareAction (*prepare)(LogProtoServer *s, GIOCondition *cond, gint *timeout);
   gboolean (*restart_with_state)(LogProtoServer *s, PersistState *state, const gchar *persist_name);
   LogProtoStatus (*fetch)(LogProtoServer *s, const guchar **msg, gsize *msg_len, gboolean *may_read,
-                          LogTransportAuxData *aux, Bookmark *bookmark);
+                          LogTransportAuxData *aux, Bookmark *bookmark, gboolean may_line);
   gboolean (*validate_options)(LogProtoServer *s);
   gboolean (*handshake_in_progess)(LogProtoServer *s);
   LogProtoStatus (*handshake)(LogProtoServer *s);
@@ -143,8 +145,13 @@ static inline LogProtoStatus
 log_proto_server_fetch(LogProtoServer *s, const guchar **msg, gsize *msg_len, gboolean *may_read,
                        LogTransportAuxData *aux, Bookmark *bookmark)
 {
-  if (s->status == LPS_SUCCESS)
-    return s->fetch(s, msg, msg_len, may_read, aux, bookmark);
+
+	// @ccaballero porque aqui a veces devuelve el resultado completo y otras veces no...
+  if (s->status == LPS_SUCCESS) {
+	  return s->fetch(s, msg, msg_len, may_read, aux, bookmark, FALSE);
+
+  }
+  // NO ENTRA AQUI NUNCA
   return s->status;
 }
 

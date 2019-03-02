@@ -58,6 +58,7 @@ typedef struct _LogProtoBufferedServerState
 
   gint64 file_size;
   gint64 file_inode;
+
 } LogProtoBufferedServerState;
 
 typedef struct _LogProtoBufferedServer LogProtoBufferedServer;

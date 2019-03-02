@@ -631,8 +631,8 @@ log_proto_buffered_server_fetch_into_buffer(LogProtoBufferedServer *self)
   if (self->convert == (GIConv) -1)
     {
       /* no conversion, we read directly into our buffer */
-      raw_buffer = self->buffer + state->pending_buffer_end;
-      avail = state->buffer_size - state->pending_buffer_end;
+		raw_buffer = self->buffer + state->pending_buffer_end;
+		avail = state->buffer_size - state->pending_buffer_end;
     }
   else
     {
@@ -648,6 +648,7 @@ log_proto_buffered_server_fetch_into_buffer(LogProtoBufferedServer *self)
     goto exit;
 
   rc = log_proto_buffered_server_read_data(self, raw_buffer + state->raw_buffer_leftover_size, avail);
+
   if (rc < 0)
     {
       if (errno == EAGAIN)
@@ -679,12 +680,14 @@ log_proto_buffered_server_fetch_into_buffer(LogProtoBufferedServer *self)
   else
     {
       state->pending_raw_buffer_size += rc;
+
       rc += state->raw_buffer_leftover_size;
+
       state->raw_buffer_leftover_size = 0;
 
       if (self->convert == (GIConv) -1)
         {
-          state->pending_buffer_end += rc;
+    	  state->pending_buffer_end += rc;
         }
       else if (!log_proto_buffered_server_convert_from_raw(self, raw_buffer, rc))
         {
@@ -766,18 +769,18 @@ _buffered_server_bookmark_fill(LogProtoBufferedServer *self, Bookmark *bookmark)
  **/
 static LogProtoStatus
 log_proto_buffered_server_fetch(LogProtoServer *s, const guchar **msg, gsize *msg_len, gboolean *may_read,
-                                LogTransportAuxData *aux, Bookmark *bookmark)
+                                LogTransportAuxData *aux, Bookmark *bookmark, gboolean may_line)
 {
   LogProtoBufferedServer *self = (LogProtoBufferedServer *) s;
   LogProtoStatus result = LPS_SUCCESS;
-
+  int i = 0;
   while (1)
     {
       if (self->fetch_state == LPBSF_FETCHING_FROM_BUFFER)
         {
-          if (log_proto_buffered_server_fetch_from_buffer(self, msg, msg_len, aux))
+          if (log_proto_buffered_server_fetch_from_buffer(self, msg, msg_len, aux)) {
             goto exit;
-
+          }
           if (log_proto_buffered_server_is_input_closed(self))
             {
               result = _convert_io_status_to_log_proto_status(self->io_status);
@@ -791,17 +794,19 @@ log_proto_buffered_server_fetch(LogProtoServer *s, const guchar **msg, gsize *ms
       else if (self->fetch_state == LPBSF_FETCHING_FROM_INPUT)
         {
           GIOStatus io_status;
-
-          if (!(*may_read))
+          if (!(*may_read)) {
             goto exit;
+          }
 
+
+          // TODO analyze this calls (twice with new line, one with timer)
           io_status = log_proto_buffered_server_fetch_into_buffer(self);
           switch (io_status)
             {
             case G_IO_STATUS_NORMAL:
               if (self->no_multi_read)
                 *may_read = FALSE;
-              break;
+        	  break;
 
             case G_IO_STATUS_AGAIN:
               goto exit;
@@ -814,11 +819,15 @@ log_proto_buffered_server_fetch(LogProtoServer *s, const guchar **msg, gsize *ms
               g_assert_not_reached();
             }
           self->fetch_state = LPBSF_FETCHING_FROM_BUFFER;
+          // TODO @ccaballe is needed this if???
+          if (i == 1) {
+              msg_error("[CC] TESTING BREAK");
+        	  break;
+          }
         }
     }
 
 exit:
-
   /* result contains our result, but once an error happens, the error condition remains persistent */
   if (result != LPS_SUCCESS)
     self->super.status = result;
